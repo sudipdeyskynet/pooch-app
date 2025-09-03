@@ -3,17 +3,21 @@ import multer from "multer";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 import fs from "fs";
+import cors from "cors"; // <-- import cors
 
 dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Parse JSON & URL-encoded
+// Enable CORS for all origins (or specify your Shopify domain)
+app.use(cors({
+  origin: "https://YOUR_SHOPIFY_DOMAIN.myshopify.com", // replace with your Shopify store
+  methods: ["POST", "GET"]
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Setup multer for file uploads
 const upload = multer({ dest: "uploads/" });
 
 // Test route
@@ -22,36 +26,27 @@ app.get("/", (req, res) => res.send("Pooch Profile App Running"));
 // Form submission
 app.post("/submit", upload.single("image"), async (req, res) => {
   try {
-    const { pooch_name, breed, birthday, weight, message, customer_id } = req.body;
+    const { name, breed, birthday, weight, message, customer_id } = req.body;
     const imageFile = req.file;
 
-    if (!imageFile) {
-      return res.status(400).json({ error: "Image is required" });
-    }
+    if (!imageFile) return res.status(400).json({ error: "Image is required" });
 
-    // Convert image to Base64
     const imageData = fs.readFileSync(imageFile.path, { encoding: "base64" });
 
-    // GraphQL mutation to create metaobject
     const mutation = `
       mutation metaobjectCreate($input: MetaobjectInput!) {
         metaobjectCreate(input: $input) {
-          metaobject {
-            id
-          }
-          userErrors {
-            field
-            message
-          }
+          metaobject { id }
+          userErrors { field message }
         }
       }
     `;
 
     const variables = {
       input: {
-        type: "pooch_profile", // Metaobject type handle from Shopify
+        type: "pooch_profile",
         fields: [
-          { key: "pooch_name", value: pooch_name },
+          { key: "name", value: name },
           { key: "breed", value: breed },
           { key: "birthday", value: birthday },
           { key: "weight", value: weight },
@@ -73,7 +68,6 @@ app.post("/submit", upload.single("image"), async (req, res) => {
 
     const result = await response.json();
 
-    // Delete uploaded temp file
     fs.unlinkSync(imageFile.path);
 
     res.json(result);
