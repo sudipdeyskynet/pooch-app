@@ -2,16 +2,15 @@ import express from "express";
 import multer from "multer";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
-import fs from "fs";
-import cors from "cors"; // <-- import cors
+import cors from "cors";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS for all origins (or specify your Shopify domain)
+// Enable CORS for your Shopify store
 app.use(cors({
-  origin: "https://thedogsbutcher.myshopify.com", // replace with your Shopify store
+  origin: "https://thedogsbutcher.myshopify.com", // replace with your Shopify store domain
   methods: ["POST", "GET"]
 }));
 
@@ -23,15 +22,10 @@ const upload = multer({ dest: "uploads/" });
 // Test route
 app.get("/", (req, res) => res.send("Pooch Profile App Running"));
 
-// Form submission
-app.post("/submit", upload.single("image"), async (req, res) => {
+// Form submission (without image for now)
+app.post("/submit", upload.none(), async (req, res) => {
   try {
     const { name, breed, birthday, weight, message, customer_id } = req.body;
-    const imageFile = req.file;
-
-    if (!imageFile) return res.status(400).json({ error: "Image is required" });
-
-    const imageData = fs.readFileSync(imageFile.path, { encoding: "base64" });
 
     const mutation = `
       mutation metaobjectCreate($input: MetaobjectInput!) {
@@ -51,8 +45,7 @@ app.post("/submit", upload.single("image"), async (req, res) => {
           { key: "birthday", value: birthday },
           { key: "weight", value: weight },
           { key: "message", value: message },
-          { key: "image", value: imageData },
-          { key: "customer_id", value: customer_id }
+          { key: "customer_id", value: `gid://shopify/Customer/${customer_id}` }
         ]
       }
     };
@@ -67,10 +60,8 @@ app.post("/submit", upload.single("image"), async (req, res) => {
     });
 
     const result = await response.json();
-
-    fs.unlinkSync(imageFile.path);
-
     res.json(result);
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong" });
