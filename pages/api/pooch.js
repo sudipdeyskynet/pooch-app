@@ -20,12 +20,12 @@ export default async function handler(req, res) {
     metaobject: {
       type: "pooch_profile",
       fields: [
-        { key: "customer_id", value: customer_id },
         { key: "name", value: name },
         { key: "breed", value: breed || "" },
         { key: "birthday", value: birthday || "" },
         { key: "weight", value: weight ? parseFloat(weight) : null },
-        { key: "notes", value: notes || "" }
+        { key: "notes", value: notes || "" },
+        { key: "customer_id", value: customer_id }
       ]
     }
   };
@@ -45,6 +45,7 @@ export default async function handler(req, res) {
 
     // ✅ Safe JSON parsing
     let resultText = await response.text();
+    console.log("Shopify raw response:", resultText);
     let result;
     try {
       result = resultText ? JSON.parse(resultText) : {};
