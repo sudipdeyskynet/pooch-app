@@ -1,12 +1,12 @@
 import fetch from "node-fetch";
 
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*"); // বা আপনার Shopify domain
+  // --- CORS headers ---
+  res.setHeader("Access-Control-Allow-Origin", "*"); // live use: replace "*" with your Shopify domain
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // OPTIONS request handle
+  // Handle OPTIONS preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -25,6 +25,7 @@ export default async function handler(req, res) {
     image_file_gid 
   } = req.body || {};
 
+  // Required fields check
   if (!name || !customer_id) {
     return res.status(400).json({ ok: false, error: "Name and customer_id are required" });
   }
@@ -32,6 +33,7 @@ export default async function handler(req, res) {
   const SHOPIFY_STORE = process.env.SHOPIFY_STORE;
   const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
+  // Build fields array
   const fields = [
     { key: "name", value: name },
     { key: "breed", value: breed || "" },
@@ -45,6 +47,7 @@ export default async function handler(req, res) {
     fields.unshift({ key: "image", value: image_file_gid });
   }
 
+  // GraphQL mutation
   const query = `
     mutation {
       metaobjectCreate(
