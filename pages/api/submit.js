@@ -59,7 +59,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, metaobjectId: result.data.metaobjectCreate.metaobject.id });
 
-  } catch (err) {
+  } catch (err) { 
     console.error(err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
