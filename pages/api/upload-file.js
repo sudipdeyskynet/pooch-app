@@ -14,22 +14,26 @@ export default async function handler(req, res) {
   const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
   try {
-    const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2025-10/files.json`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
-      },
-      body: JSON.stringify({ file: { attachment: file_base64, filename } })
-    });
+  const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2025-10/files.json`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
+    },
+    body: JSON.stringify({ file: { attachment: file_base64, filename } })
+  });
 
-    const result = await response.json();
-    if (result.file && result.file.id) {
-      res.status(200).json({ ok: true, gid: `gid://shopify/File/${result.file.id}` });
-    } else {
-      res.status(400).json({ ok: false, error: result });
-    }
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+  const text = await response.text();
+  console.log("Shopify response text:", text);  // <-- debug
+  const result = JSON.parse(text);
+
+  if (result.file && result.file.id) {
+    res.status(200).json({ ok: true, gid: `gid://shopify/File/${result.file.id}` });
+  } else {
+    res.status(400).json({ ok: false, error: result });
   }
+} catch (err) {
+  res.status(500).json({ ok: false, error: err.message });
+}
+
 }
