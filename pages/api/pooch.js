@@ -1,6 +1,16 @@
 import fetch from "node-fetch";
 
 export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*"); // বা আপনার Shopify domain
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // OPTIONS request handle
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
@@ -15,18 +25,13 @@ export default async function handler(req, res) {
     image_file_gid 
   } = req.body || {};
 
-  // Required fields check
   if (!name || !customer_id) {
-    return res.status(400).json({ 
-      ok: false, 
-      error: "Name and customer_id are required" 
-    });
+    return res.status(400).json({ ok: false, error: "Name and customer_id are required" });
   }
 
   const SHOPIFY_STORE = process.env.SHOPIFY_STORE;
   const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
-  // Build fields array
   const fields = [
     { key: "name", value: name },
     { key: "breed", value: breed || "" },
@@ -36,12 +41,10 @@ export default async function handler(req, res) {
     { key: "customer_id", value: `gid://shopify/Customer/${customer_id}` }
   ];
 
-  // Add image only if provided
   if (image_file_gid) {
     fields.unshift({ key: "image", value: image_file_gid });
   }
 
-  // GraphQL mutation
   const query = `
     mutation {
       metaobjectCreate(
