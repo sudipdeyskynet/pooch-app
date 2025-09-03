@@ -1,7 +1,6 @@
 import fetch from "node-fetch";
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -21,16 +20,10 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
       },
-      body: JSON.stringify({
-        file: {
-          attachment: file_base64,
-          filename
-        }
-      })
+      body: JSON.stringify({ file: { attachment: file_base64, filename } })
     });
 
     const result = await response.json();
-
     if (result.file && result.file.id) {
       res.status(200).json({ ok: true, gid: `gid://shopify/File/${result.file.id}` });
     } else {
