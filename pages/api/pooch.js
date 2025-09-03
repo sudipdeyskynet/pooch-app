@@ -4,26 +4,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // OPTIONS preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
     const { customer_id, name, breed, birthday, weight, message } = await req.json();
-
-    if (!customer_id || !name) {
-      return res.status(400).json({ error: "Required fields missing" });
-    }
+    if (!customer_id || !name) return res.status(400).json({ error: "Customer ID and name required" });
 
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE;
     const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION;
@@ -65,12 +55,11 @@ export default async function handler(req, res) {
 
     const result = await response.json();
 
-    if (result.data.metaobjectCreate.userErrors.length) {
-      return res.status(400).json({ error: result.data.metaobjectCreate.userErrors });
-    }
+    if (result.errors) return res.status(500).json({ error: result.errors[0].message });
+    if (result.data.metaobjectCreate.userErrors.length)
+      return res.status(400).json({ error: result.data.metaobjectCreate.userErrors.map(e => e.message).join(", ") });
 
     res.status(200).json({ success: true, metaobject: result.data.metaobjectCreate.metaobject });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
