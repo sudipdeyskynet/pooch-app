@@ -51,7 +51,7 @@ app.post("/submit", upload.single("image"), async (req, res) => {
       input: {
         type: "pooch_profile", // Metaobject type handle from Shopify
         fields: [
-          { key: "pooch_name", value: name },
+          { key: "name", value: name },
           { key: "breed", value: breed },
           { key: "birthday", value: birthday },
           { key: "weight", value: weight },
