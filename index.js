@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 
 // Enable CORS for all origins (or specify your Shopify domain)
 app.use(cors({
-  origin: "https://YOUR_SHOPIFY_DOMAIN.myshopify.com", // replace with your Shopify store
+  origin: "https://thedogsbutcher.myshopify.com", // replace with your Shopify store
   methods: ["POST", "GET"]
 }));
 
