@@ -5,59 +5,97 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
-  console.log("Request body:", req.body);
+  const { 
+    name, 
+    customer_id, 
+    breed, 
+    birthday, 
+    weight, 
+    notes, 
+    image_file_gid 
+  } = req.body || {};
 
-  const { customer_id, name, breed, birthday, weight, notes } = req.body || {};
-
-  if (!customer_id || !name) {
-    return res.status(400).json({ ok: false, error: "Customer ID and name are required" });
+  // Required fields check
+  if (!name || !customer_id) {
+    return res.status(400).json({ 
+      ok: false, 
+      error: "Name and customer_id are required" 
+    });
   }
 
-  const SHOPIFY_STORE = process.env.SHOPIFY_STORE;           // yourstore.myshopify.com
-  const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN; // Admin API token with write_metaobjects
+  const SHOPIFY_STORE = process.env.SHOPIFY_STORE;
+  const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
-  const metaobjectData = {
-    metaobject: {
-      type: "pooch_profile",
-      fields: [
-        { key: "name", value: name },
-        { key: "breed", value: breed || "" },
-        { key: "birthday", value: birthday || "" },
-        { key: "weight", value: weight ? parseFloat(weight) : null },
-        { key: "notes", value: notes || "" },
-        { key: "customer_id", value: customer_id }
-      ]
+  // Build fields array
+  const fields = [
+    { key: "name", value: name },
+    { key: "breed", value: breed || "" },
+    { key: "birthday", value: birthday || "" },
+    { key: "weight", value: weight ? weight.toString() : "" },
+    { key: "notes", value: notes || "" },
+    { key: "customer_id", value: `gid://shopify/Customer/${customer_id}` }
+  ];
+
+  // Add image only if provided
+  if (image_file_gid) {
+    fields.unshift({ key: "image", value: image_file_gid });
+  }
+
+  // GraphQL mutation
+  const query = `
+    mutation {
+      metaobjectCreate(
+        metaobject: {
+          type: "pooch_profile",
+          fields: ${JSON.stringify(fields).replace(/"([^"]+)":/g, '$1:')}
+        }
+      ) {
+        metaobject {
+          id
+          type
+          fields {
+            key
+            value
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
     }
-  };
+  `;
 
   try {
     const response = await fetch(
-      `https://${SHOPIFY_STORE}/admin/api/2025-10/metaobjects.json`,
+      `https://${SHOPIFY_STORE}/admin/api/2025-10/graphql.json`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
         },
-        body: JSON.stringify(metaobjectData)
+        body: JSON.stringify({ query })
       }
     );
 
-    // ✅ Safe JSON parsing
-    let resultText = await response.text();
-    console.log("Shopify raw response:", resultText);
-    let result;
-    try {
-      result = resultText ? JSON.parse(resultText) : {};
-    } catch (err) {
-      return res.status(500).json({ ok: false, error: "Invalid JSON from Shopify", details: resultText });
+    const result = await response.json();
+
+    if (result.errors) {
+      return res.status(500).json({ ok: false, error: result.errors });
     }
 
-    if (response.ok) {
-      res.status(200).json({ ok: true, data: result });
-    } else {
-      res.status(400).json({ ok: false, error: result.errors || JSON.stringify(result) });
+    if (result.data.metaobjectCreate.userErrors.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: result.data.metaobjectCreate.userErrors
+      });
     }
+
+    res.status(200).json({
+      ok: true,
+      data: result.data.metaobjectCreate.metaobject
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
