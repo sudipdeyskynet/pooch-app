@@ -1,11 +1,8 @@
 import formidable from "formidable";
-import fs from "fs";
-import FormData from "form-data";
 import fetch from "node-fetch";
+import fs from "fs/promises";
 
-export const config = {
-  api: { bodyParser: false },
-};
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -23,8 +20,13 @@ export default async function handler(req, res) {
 
       console.log("File received:", file.originalFilename, file.filepath);
 
+      // Read file as buffer
+      const buffer = await fs.readFile(file.filepath);
+
+      // Create multipart/form-data manually
+      const FormData = require("form-data");
       const fd = new FormData();
-      fd.append("file", fs.createReadStream(file.filepath));
+      fd.append("file", buffer, { filename: file.originalFilename });
       fd.append("purpose", "IMAGE");
 
       const response = await fetch(
@@ -44,10 +46,10 @@ export default async function handler(req, res) {
 
       if (result.errors) return res.status(400).json({ ok: false, error: result.errors });
 
-      return res.status(200).json({ ok: true, file: result.file });
+      res.status(200).json({ ok: true, file: result.file });
     } catch (e) {
       console.error("Upload error:", e);
-      return res.status(500).json({ ok: false, error: e.message });
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 }
