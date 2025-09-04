@@ -3,7 +3,7 @@ import fs from "fs";
 import fetch from "node-fetch";
 
 export const config = {
-  api: { bodyParser: false },
+  api: { bodyParser: false }, // Important for file uploads
 };
 
 export default async function handler(req, res) {
@@ -29,19 +29,13 @@ export default async function handler(req, res) {
     const file = data.files.file;
     if (!file) return res.status(400).json({ message: "No file uploaded" });
 
-    // Validate JPG
-//     if (!["image/jpeg", "image/jpg", "image/pjpeg"].includes(file.mimetype)) {
-//   return res.status(400).json({ message: "Only JPG images are allowed" });
-// }
-
-
     // Read file as Base64
     const fileData = fs.readFileSync(file.filepath);
     const base64Data = fileData.toString("base64");
 
-    // Upload to Shopify
+    // Upload to Shopify Files API
     const shopifyResponse = await fetch(
-      "https://YOUR_STORE.myshopify.com/admin/api/2025-10/files.json",
+      "https://jeju0p-t8.myshopify.com.myshopify.com/admin/api/2025-10/files.json",
       {
         method: "POST",
         headers: {
@@ -66,7 +60,7 @@ export default async function handler(req, res) {
     }
 
     if (shopifyResponse.ok) {
-      return res.status(200).json({ message: "JPG image uploaded!", result: resultJson });
+      return res.status(200).json({ message: "File uploaded successfully!", result: resultJson });
     } else {
       return res.status(shopifyResponse.status).json({ message: "Shopify error", result: resultJson });
     }
