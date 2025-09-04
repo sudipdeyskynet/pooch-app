@@ -30,9 +30,9 @@ export default async function handler(req, res) {
     if (!file) return res.status(400).json({ message: "No file uploaded" });
 
     // Validate JPG
-    if (!["image/jpeg", "image/jpg", "image/pjpeg"].includes(file.mimetype)) {
-  return res.status(400).json({ message: "Only JPG images are allowed" });
-}
+//     if (!["image/jpeg", "image/jpg", "image/pjpeg"].includes(file.mimetype)) {
+//   return res.status(400).json({ message: "Only JPG images are allowed" });
+// }
 
 
     // Read file as Base64
