@@ -1,4 +1,4 @@
-import formidable from "formidable";
+import { IncomingForm } from "formidable";
 import fs from "fs";
 import fetch from "node-fetch";
 
@@ -16,9 +16,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ message: "Method not allowed" });
 
   try {
-    const form = new formidable.IncomingForm();
-    
-    // Parse form data as a promise
+    const form = new IncomingForm();
+
+    // Parse form data as promise
     const data = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) reject(err);
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: "Only JPG images are allowed" });
     }
 
-    // Convert to Base64
+    // Read file as Base64
     const fileData = fs.readFileSync(file.filepath);
     const base64Data = fileData.toString("base64");
 
@@ -56,11 +56,10 @@ export default async function handler(req, res) {
       }
     );
 
-    const resultText = await shopifyResponse.text(); // Read as text first
+    const resultText = await shopifyResponse.text();
     let resultJson;
-
     try {
-      resultJson = JSON.parse(resultText); // Parse safely
+      resultJson = JSON.parse(resultText);
     } catch (e) {
       return res.status(500).json({ message: "Shopify returned invalid JSON", resultText });
     }
