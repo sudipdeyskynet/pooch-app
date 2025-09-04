@@ -1,55 +1,57 @@
 import formidable from "formidable";
+import fs from "fs";
 import fetch from "node-fetch";
-import fs from "fs/promises";
 
-export const config = { api: { bodyParser: false } };
+export const config = {
+  api: { bodyParser: false },
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ ok: false, error: "Method not allowed" });
+    return res.status(405).json({ message: "Method not allowed" });
   }
 
   const form = new formidable.IncomingForm();
-
   form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ ok: false, error: err.message });
+    if (err) return res.status(500).json({ message: err.message });
 
-    try {
-      const file = files.image;
-      if (!file) return res.status(400).json({ ok: false, error: "No file uploaded" });
+    const file = files.file;
+    if (!file) return res.status(400).json({ message: "No file uploaded" });
 
-      console.log("File received:", file.originalFilename, file.filepath);
+    // Validate file type
+    const mimeType = file.mimetype || "";
+    if (!["image/jpeg", "image/jpg"].includes(mimeType)) {
+      return res.status(400).json({ message: "Only JPG images are allowed" });
+    }
 
-      // Read file as buffer
-      const buffer = await fs.readFile(file.filepath);
+    // Read file as Base64
+    const fileData = fs.readFileSync(file.filepath);
+    const base64Data = fileData.toString("base64");
 
-      // Create multipart/form-data manually
-      const FormData = require("form-data");
-      const fd = new FormData();
-      fd.append("file", buffer, { filename: file.originalFilename });
-      fd.append("purpose", "IMAGE");
-
-      const response = await fetch(
-        `https://${process.env.SHOPIFY_STORE}/admin/api/2025-10/files.json`,
-        {
-          method: "POST",
-          headers: {
-            "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
-            ...fd.getHeaders(),
+    // Upload to Shopify Files
+    const shopifyResponse = await fetch(
+      "https://YOUR_STORE.myshopify.com/admin/api/2025-10/files.json",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+        },
+        body: JSON.stringify({
+          file: {
+            attachment: base64Data,
+            filename: file.originalFilename,
           },
-          body: fd,
-        }
-      );
+        }),
+      }
+    );
 
-      const result = await response.json();
-      console.log("Shopify file upload response:", result);
+    const result = await shopifyResponse.json();
 
-      if (result.errors) return res.status(400).json({ ok: false, error: result.errors });
-
-      res.status(200).json({ ok: true, file: result.file });
-    } catch (e) {
-      console.error("Upload error:", e);
-      res.status(500).json({ ok: false, error: e.message });
+    if (shopifyResponse.ok) {
+      res.status(200).json({ message: "JPG image uploaded!", result });
+    } else {
+      res.status(shopifyResponse.status).json({ message: "Shopify error", result });
     }
   });
 }
