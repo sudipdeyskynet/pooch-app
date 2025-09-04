@@ -7,38 +7,38 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // ✅ Add CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*"); // allow all origins
+  // CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // ✅ Handle preflight request
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ message: "Method not allowed" });
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+  try {
+    const form = new formidable.IncomingForm();
+    
+    // Parse form data as a promise
+    const data = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve({ fields, files });
+      });
+    });
 
-  const form = new formidable.IncomingForm();
-  form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ message: err.message });
-
-    const file = files.file;
+    const file = data.files.file;
     if (!file) return res.status(400).json({ message: "No file uploaded" });
 
-    // Validate file type
-    const mimeType = file.mimetype || "";
-    if (!["image/jpeg", "image/jpg"].includes(mimeType)) {
+    // Validate JPG
+    if (!["image/jpeg", "image/jpg"].includes(file.mimetype)) {
       return res.status(400).json({ message: "Only JPG images are allowed" });
     }
 
-    // Read file as Base64
+    // Convert to Base64
     const fileData = fs.readFileSync(file.filepath);
     const base64Data = fileData.toString("base64");
 
-    // Upload to Shopify Files
+    // Upload to Shopify
     const shopifyResponse = await fetch(
       "https://YOUR_STORE.myshopify.com/admin/api/2025-10/files.json",
       {
@@ -56,12 +56,22 @@ export default async function handler(req, res) {
       }
     );
 
-    const result = await shopifyResponse.json();
+    const resultText = await shopifyResponse.text(); // Read as text first
+    let resultJson;
+
+    try {
+      resultJson = JSON.parse(resultText); // Parse safely
+    } catch (e) {
+      return res.status(500).json({ message: "Shopify returned invalid JSON", resultText });
+    }
 
     if (shopifyResponse.ok) {
-      res.status(200).json({ message: "JPG image uploaded!", result });
+      return res.status(200).json({ message: "JPG image uploaded!", result: resultJson });
     } else {
-      res.status(shopifyResponse.status).json({ message: "Shopify error", result });
+      return res.status(shopifyResponse.status).json({ message: "Shopify error", result: resultJson });
     }
-  });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
 }
